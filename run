@@ -1,0 +1,89 @@
+#!/bin/bash
+
+set -x
+
+APP_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/." && pwd )"
+VER_FILE="$APP_DIR/.version"
+
+cmd=$1
+shift
+
+function usage(){
+  local err="$@"
+
+  if [[ -n "$err" ]]; then
+    echo "Error: $err"
+  fi
+
+  cat <<EOF
+$0 <command>
+
+Run a command.  They are:
+  build       - build a docker container containing the program
+  dev         - start the shell of the golang build container with the source code mounted in.
+  serve <dir> - Runs a docker compose of the built container
+  version     - echo the version that would be built
+  help        - This help
+  <empty>     - This help
+EOF
+
+  # if given an error then error
+  [[ -z "$err" ]]; exit
+}
+
+function build(){
+  local version=$(raw_version)
+
+  (cd "$APP_DIR"; docker build -t "${version}" .)
+  exit
+}
+
+function raw_version(){
+  echo "jkamenik/jekyll:local"
+}
+
+function version(){
+  raw_version
+}
+
+function dev(){
+  docker run -ti --rm \
+    -v "$APP_DIR:/code" \
+    -v "$APP_DIR:/site" \
+    --entrypoint /bin/bash \
+    -p 4000:4000 "$(version)"
+}
+
+function serve(){
+  local dir="$1"
+  
+  if ! [[ -d "$dir" ]]; then
+    usage "'$dir' is not a directory that Jekyll can serve"
+  fi
+  
+  docker run -ti --rm \
+    -v "${APP_DIR}/${dir}":/site \
+    -p 4000:4000 "$(version)" serve -H 0.0.0.0
+}
+
+
+case "$cmd" in
+  build)
+    build
+    ;;
+  dev)
+    dev
+    ;;
+  version)
+    version
+    ;;
+  serve)
+    serve "$@"
+    ;;
+  help|-h|--help|"")
+    usage
+    ;;
+  *)
+    usage "Unknown Command: $cmd"
+    ;;
+esac
