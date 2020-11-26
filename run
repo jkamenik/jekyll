@@ -20,7 +20,7 @@ $0 <command>
 
 Run a command.  They are:
   build       - build a docker container containing the program
-  dev         - start the shell of the golang build container with the source code mounted in.
+  dev [<tag>] - start the shell of the golang build container with the source code mounted in.
   serve <dir> - Runs a docker compose of the built container
   version     - echo the version that would be built
   help        - This help
@@ -32,14 +32,19 @@ EOF
 }
 
 function build(){
-  local version=$(raw_version)
+  local version=$(raw_version "$@")
 
   (cd "$APP_DIR"; docker build -t "${version}" .)
   exit
 }
 
 function raw_version(){
-  echo "jkamenik/jekyll:local"
+  local tag="$1"
+  if [[ -z "$tag" ]]; then
+    tag="local"
+  fi
+  
+  echo "jkamenik/jekyll:$tag"
 }
 
 function version(){
@@ -69,7 +74,7 @@ function serve(){
 
 case "$cmd" in
   build)
-    build
+    build "$@"
     ;;
   dev)
     dev
